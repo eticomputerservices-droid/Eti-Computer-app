@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETI-COMPUTER</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:linear-gradient(180deg,#0f172a,#1e1b4b,#312e81);color:white;min-height:100vh;padding-bottom:20px}
+.header{padding:20px 18px;display:flex;justify-content:space-between;align-items:center}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:58px;height:58px;background:white;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:30px}
+.brand h1{font-size:19px}.brand h1 span{color:#a5b4fc;font-size:11px;display:block}
+.dot{padding:8px 12px;border-radius:20px;font-size:12px;font-weight:bold;background:#ef4444}.dot.on{background:#22c55e}
+.conn{background:white;color:#0f172a;margin:14px 18px;padding:16px;border-radius:22px}
+.conn-row{display:flex;gap:10px;margin-top:10px}
+.card-btn{flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px;text-align:center;cursor:pointer}
+.card-btn.connected{border:2px solid #22c55e;background:#f0fdf4}
+.card-btn b{font-size:14px}.card-btn span{font-size:11px;color:#475569;display:block;margin:4px 0}
+.card-btn button{width:100%;padding:10px;border:0;border-radius:10px;font-weight:bold;margin-top:6px}
+.bt{background:#2563eb;color:white}.wifi{background:#7c3aed;color:white}
+.light{background:white;color:#0f172a;margin:12px 18px;padding:16px;border-radius:22px;display:flex;justify-content:space-between;align-items:center}
+.light.on{border:2px solid #22c55e}
+.switch{width:62px;height:34px;background:#cbd5e1;border-radius:30px;position:relative}
+.switch:after{content:"";width:28px;height:28px;background:white;border-radius:50%;position:absolute;top:3px;left:3px;transition:.2s}
+.switch.on{background:#22c55e}.switch.on:after{left:31px}
+.btns{display:flex;gap:12px;margin:16px 18px}.btns button{flex:1;padding:15px;border:0;border-radius:16px;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="header"><div class="brand"><div class="logo">⚡</div><h1>ETI-COMPUTER<span>SERVICES • Lagos</span></h1></div><div id="dot" class="dot">● OFFLINE</div></div>
+
+<div class="conn">
+<h3>📡 Connectivity — Real App Mode</h3><p style="font-size:12px;color:#64748b">Tap card — System menu go open</p>
+<div class="conn-row">
+<div class="card-btn" id="btCard" onclick="openBluetooth()"><div style="font-size:28px">📘</div><b>Bluetooth</b><span id="btStatus">Tap to Pair</span><button class="bt" onclick="event.stopPropagation();openBluetooth()">Pair Bluetooth</button></div>
+<div class="card-btn" id="wifiCard" onclick="openWifi()"><div style="font-size:28px">📶</div><b>WiFi</b><span id="wifiStatus">Tap to Pair</span><button class="wifi" onclick="event.stopPropagation();openWifi()">Pair WiFi</button></div>
+</div>
+</div>
+
+<div class="light" id="c1"><div><b>💡 Office Inside</b><br><span id="t1">OFF</span></div><div class="switch" id="s1" onclick="toggle(1)"></div></div>
+<div class="light" id="c2"><div><b>💡 Office Outside</b><br><span id="t2">OFF</span></div><div class="switch" id="s2" onclick="toggle(2)"></div></div>
+<div class="light" id="c3"><div><b>🔋 Inverter</b><br><span id="t3">OFF</span></div><div class="switch" id="s3" onclick="toggle(3)"></div></div>
+<div class="btns"><button style="background:#22c55e;color:white" onclick="all(true)">✅ ALL ON</button><button style="background:white" onclick="all(false)">⛔ ALL OFF</button></div>
+<p style="text-align:center;font-size:11px;color:#a5b4fc">ETI-COMPUTER • Android App v1.0</p>
+
+<script type="module">
+import { BluetoothLe } from '@capacitor-community/bluetooth-le';
+import { App } from '@capacitor/app';
+
+let state={1:false,2:false,3:false};
+let btConnected=false, wifiConnected=false;
+
+function updateDot(){let d=document.getElementById('dot');let on=btConnected||wifiConnected;d.innerText=on?'● ONLINE':'● OFFLINE';d.className='dot'+(on?' on':'');}
+
+// ===== REAL BLUETOOTH - ANDROID NATIVE =====
+window.openBluetooth = async function(){
+  try{
+    // Request permission
+    await BluetoothLe.requestPermissions();
+    // This go open REAL system scan - show all devices
+    const result = await BluetoothLe.requestDevice({ services: [] });
+    document.getElementById('btStatus').innerText = 'Paired • ' + (result.device.name || 'Device');
+    document.getElementById('btCard').classList.add('connected');
+    btConnected=true; updateDot();
+    alert('✅ Bluetooth Paired: ' + (result.device.name || 'Device'));
+  }catch(e){
+    // Fallback to Web Bluetooth if plugin no work
+    if(navigator.bluetooth){
+      try{
+        let d = await navigator.bluetooth.requestDevice({acceptAllDevices:true, optionalServices:['battery_service','device_information']});
+        await d.gatt.connect();
+        document.getElementById('btStatus').innerText = 'Paired • ' + (d.name||'Device');
+        document.getElementById('btCard').classList.add('connected');
+        btConnected=true; updateDot();
+      }catch(err){ alert('Bluetooth cancelled'); }
+    } else { alert('Bluetooth Error: '+e.message); }
+  }
+}
+
+// ===== REAL WIFI - OPEN SYSTEM WIFI SETTINGS =====
+window.openWifi = async function(){
+  // For Android, open real WiFi settings screen
+  try{
+    // Use App plugin to open settings via intent - this works on real device
+    window.location.href = 'intent:#Intent;action=android.settings.WIFI_SETTINGS;end';
+    setTimeout(()=>{
+      wifiConnected=true;
+      document.getElementById('wifiStatus').innerText='WiFi Settings Opened • Connect & Return';
+      document.getElementById('wifiCard').classList.add('connected');
+      updateDot();
+    }, 1000);
+  }catch(e){ alert('Go to Settings > WiFi manually'); }
+}
+
+window.toggle = function(n){ state[n]=!state[n]; render(); }
+window.all = function(v){ state={1:v,2:v,3:v}; render(); }
+function render(){ for(let i=1;i<=3;i++){ document.getElementById('s'+i).className='switch'+(state[i]?' on':''); document.getElementById('c'+i).className='light'+(state[i]?' on':''); document.getElementById('t'+i).innerText=state[i]?'ON • Working':'OFF'; } }
+render();
+</script>
+</body>
+</html>
